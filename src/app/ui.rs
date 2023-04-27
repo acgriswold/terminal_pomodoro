@@ -32,7 +32,7 @@ where
         .split(chunks[1]);
 
     // Render body
-    let body = draw_body(false, app.state());
+    let body = draw_body(app.is_loading(), app.state());
     rect.render_widget(body, body_chunks[0]);
 
     // Render help
@@ -63,14 +63,28 @@ fn draw_title<'a>() -> Paragraph<'a> {
 }
 
 fn draw_body<'a>(loading: bool, state: &AppState) -> Paragraph<'a> {
+    let initialized_text = if state.is_initialized() {
+        "Initialized"
+    } else {
+        "Not Initialized!"
+    };
+
     let loading_text = if loading { "Loading..." } else { "" };
+    let sleep_text = if let Some(sleeps) = state.count_sleep() {
+        format!("Sleep count: {}", sleeps)
+    } else {
+        String::default()
+    };
+
     let tick_text = if let Some(ticks) = state.count_tick() {
         format!("Tick count: {}", ticks)
     } else {
         String::default()
     };
     Paragraph::new(vec![
+        Spans::from(Span::raw(initialized_text)),
         Spans::from(Span::raw(loading_text)),
+        Spans::from(Span::raw(sleep_text)),
         Spans::from(Span::raw(tick_text)),
     ])
     .style(Style::default().fg(Color::LightCyan))
