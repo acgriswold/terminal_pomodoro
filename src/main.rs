@@ -8,6 +8,9 @@ use terminal_pomodoro::start_ui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tui_logger::init_logger(log::LevelFilter::Debug).unwrap();
+    tui_logger::set_default_level(log::LevelFilter::Debug);
+
     let (sync_io_tx, mut sync_io_rx) = tokio::sync::mpsc::channel::<IoEvent>(100);
 
     // Setup app instances to share between threads
