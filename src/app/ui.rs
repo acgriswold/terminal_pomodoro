@@ -1,9 +1,13 @@
+use std::time::Duration;
+
+use symbols::line;
 use tui::backend::Backend;
 use tui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use tui::style::{Color, Style};
+use tui::style::{Color, Modifier, Style};
 use tui::text::{Span, Spans};
-use tui::widgets::{Block, BorderType, Borders, Cell, Paragraph, Row, Table};
-use tui::Frame;
+use tui::widgets::{Block, BorderType, Borders, Cell, LineGauge, Paragraph, Row, Table};
+use tui::{symbols, Frame};
+use tui_logger::TuiLoggerWidget;
 
 use super::actions::Actions;
 use super::state::AppState;
@@ -19,7 +23,15 @@ where
     // Vertical layout
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(10)].as_ref())
+        .constraints(
+            [
+                Constraint::Length(3),
+                Constraint::Min(10),
+                Constraint::Length(3),
+                Constraint::Length(12),
+            ]
+            .as_ref(),
+        )
         .split(size);
 
     // Render title
@@ -38,6 +50,14 @@ where
     // Render help
     let help = draw_help(app.actions());
     rect.render_widget(help, body_chunks[1]);
+
+    if let Some(duration) = app.state().duration() {
+        let duration_block = draw_duration(duration);
+        rect.render_widget(duration_block, chunks[2]);
+    }
+
+    let logs = draw_logs();
+    rect.render_widget(logs, chunks[3])
 }
 
 fn check_size(rect: &Rect) {
@@ -60,6 +80,28 @@ fn draw_title<'a>() -> Paragraph<'a> {
                 .style(Style::default().fg(Color::White))
                 .border_type(BorderType::Plain),
         )
+}
+
+fn draw_duration(duration: &Duration) -> LineGauge {
+    let sec = duration.as_secs();
+    let label = format!("{}s", sec);
+    let ratio = sec as f64 / 10.0;
+
+    LineGauge::default()
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Sleep duration"),
+        )
+        .gauge_style(
+            Style::default()
+                .fg(Color::Cyan)
+                .bg(Color::Black)
+                .add_modifier(Modifier::BOLD),
+        )
+        .line_set(line::THICK)
+        .label(label)
+        .ratio(ratio)
 }
 
 fn draw_body<'a>(loading: bool, state: &AppState) -> Paragraph<'a> {
@@ -128,4 +170,20 @@ fn draw_help(actions: &Actions) -> Table {
         )
         .widths(&[Constraint::Length(11), Constraint::Min(20)])
         .column_spacing(1)
+}
+
+fn draw_logs<'a>() -> TuiLoggerWidget<'a> {
+    TuiLoggerWidget::default()
+        .style_error(Style::default().fg(Color::Red))
+        .style_debug(Style::default().fg(Color::Green))
+        .style_warn(Style::default().fg(Color::Yellow))
+        .style_trace(Style::default().fg(Color::Gray))
+        .style_info(Style::default().fg(Color::Blue))
+        .block(
+            Block::default()
+                .title("Logs")
+                .border_style(Style::default().fg(Color::White).bg(Color::Black))
+                .borders(Borders::ALL)
+        )
+        .style(Style::default().fg(Color::White).bg(Color::Black))        
 }
