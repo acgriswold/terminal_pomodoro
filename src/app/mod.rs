@@ -53,6 +53,14 @@ impl App {
                         self.dispatch(IoEvent::Sleep(duration)).await
                     }
                     AppReturn::Continue
+                },
+                Action::IncrementDelay => {
+                    self.state.increment_delay();
+                    AppReturn::Continue
+                },
+                Action::DecrementDelay => {
+                    self.state.decrement_delay();
+                    AppReturn::Continue
                 }
             }
         } else {
@@ -89,7 +97,14 @@ impl App {
     }
 
     pub fn initialized(&mut self) {
-        self.actions = vec![Action::Quit, Action::Sleep].into();
+        self.actions = vec![
+            Action::Quit, 
+            Action::Sleep,
+            Action::IncrementDelay, 
+            Action::DecrementDelay
+        ]
+        .into();
+
         self.state = AppState::initialized()
     }
 

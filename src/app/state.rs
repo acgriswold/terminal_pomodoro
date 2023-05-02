@@ -65,16 +65,26 @@ impl AppState {
     pub fn increment_delay(&mut self) {
         if let Self::Initialized { duration, .. } = self {
             // Set the duration, note that the duration is in 1s..10s
-            let secs = (duration.as_secs() + 1).clamp(1, 10);
-            *duration = Duration::from_secs(secs);
+            let updated_duration = duration.as_secs() + 1;
+            if updated_duration > 10 {
+                log::error!("Cannot increment more than 10 seconds");
+            }
+
+            let clamped_duration = updated_duration.clamp(1, 10);
+            *duration = Duration::from_secs(clamped_duration);
         }
     }
 
     pub fn decrement_delay(&mut self) {
         if let Self::Initialized { duration, .. } = self {
             // Set the duration, note that the duration is in 1s..10s
-            let secs = (duration.as_secs() - 1).clamp(1, 10);
-            *duration = Duration::from_secs(secs);
+            let updated_duration = duration.as_secs() - 1;
+            if updated_duration < 1 {
+                log::error!("Cannot decrement less than 1 second");
+            }
+                        
+            let clamped_duration = updated_duration.clamp(1, 10);
+            *duration = Duration::from_secs(clamped_duration);
         }
     }
 }
