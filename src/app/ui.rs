@@ -18,8 +18,6 @@ where
     B: Backend,
 {
     let size = rect.size();
-    check_size(&size);
-
     // Vertical layout
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -34,40 +32,75 @@ where
         )
         .split(size);
 
-    // Render title
-    let title = draw_title();
-    rect.render_widget(title, chunks[0]);
+    match check_size(&size) {
+        Ok(()) => {
+            // Render title
+            let title = draw_title();
+            rect.render_widget(title, chunks[0]);
 
-    let body_chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Min(20), Constraint::Length(32)].as_ref())
-        .split(chunks[1]);
+            let body_chunks = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([Constraint::Min(20), Constraint::Length(32)].as_ref())
+                .split(chunks[1]);
 
-    // Render body
-    let body = draw_body(app.is_loading(), app.state());
-    rect.render_widget(body, body_chunks[0]);
+            // Render body
+            let body = draw_body(app.is_loading(), app.state());
+            rect.render_widget(body, body_chunks[0]);
 
-    // Render help
-    let help = draw_help(app.actions());
-    rect.render_widget(help, body_chunks[1]);
+            // Render help
+            let help = draw_help(app.actions());
+            rect.render_widget(help, body_chunks[1]);
 
-    if let Some(duration) = app.state().duration() {
-        let duration_block = draw_duration(duration);
-        rect.render_widget(duration_block, chunks[2]);
+            if let Some(duration) = app.state().duration() {
+                let duration_block = draw_duration(duration);
+                rect.render_widget(duration_block, chunks[2]);
+            }
+
+            let logs = draw_logs();
+            rect.render_widget(logs, chunks[3]);
+        }
+        Err(err) => {
+            let error = draw_size_error(err);
+            rect.render_widget(error, chunks[0]);
+        }
     }
-
-    let logs = draw_logs();
-    rect.render_widget(logs, chunks[3])
 }
 
-fn check_size(rect: &Rect) {
-    if rect.width < 52 {
-        panic!("Require width >= 52, (got {})", rect.width)
-    } 
+fn check_size(rect: &Rect) -> Result<(), UiError> {
+    let width_error = if rect.width < 52 { Some(format!("Require width >= 52, (got {})", rect.width)) } else { None };
+    let height_error = if rect.height < 28 { Some(format!("Require height >= 28, (got {})", rect.height)) } else { None };
 
-    if rect.height < 28 {
-        panic!("Require height >= 28, (got {})", rect.height)
+    match (width_error, height_error) {
+        (None, None) => Ok(()),
+        (Some(w_e), Some(h_e)) => Err(UiError::Sizing { width: Some(w_e), height: Some(h_e) }),
+        (Some(w_e), _) => Err(UiError::Sizing { width: Some(w_e), height: None }),
+        (_, Some(h_e)) => Err(UiError::Sizing { width: None, height: Some(h_e) }),
     }
+}
+
+fn draw_size_error<'a>(err: UiError) -> Paragraph<'a> {
+    let error_text = match err {
+        UiError::Sizing { width: Some(_width_error), height: Some(_height_error) } => {
+            format!("{_width_error} | {_height_error}")
+        },
+        UiError::Sizing { width: Some(_error), height: _ } => {
+            format!("{_error}")
+        },
+        UiError::Sizing { width: _, height: Some(_error) } => {
+            format!("{_error}")
+        },
+        _ => {"Unhandled error".to_string()}
+    };
+
+    Paragraph::new(error_text)
+        .style(Style::default().fg(Color::Red))
+        .alignment(Alignment::Center)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .style(Style::default().fg(Color::Red))
+                .border_type(BorderType::Thick),
+        )
 }
 
 fn draw_title<'a>() -> Paragraph<'a> {
@@ -183,7 +216,14 @@ fn draw_logs<'a>() -> TuiLoggerWidget<'a> {
             Block::default()
                 .title("Logs")
                 .border_style(Style::default().fg(Color::White).bg(Color::Black))
-                .borders(Borders::ALL)
+                .borders(Borders::ALL),
         )
-        .style(Style::default().fg(Color::White).bg(Color::Black))        
+        .style(Style::default().fg(Color::White).bg(Color::Black))
+}
+
+enum UiError {
+    Sizing {
+        width: Option<String>,
+        height: Option<String>,
+    },
 }
